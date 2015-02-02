@@ -25,6 +25,8 @@ Environment:
 
 MINISPY_DATA MiniSpyData;
 NTSTATUS StatusToBreakOn = 0;
+//Cookie for the registry filter.
+LARGE_INTEGER g_CmCookie = {0};
 
 //---------------------------------------------------------------------------
 //  Function prototypes
@@ -117,6 +119,33 @@ _In_ BOOLEAN Create)
 }
 
     
+
+NTSTATUS
+RegistryCallback(
+_In_ PVOID CallbackContext,
+_In_opt_ PVOID Argument1,
+_In_opt_ PVOID Argument2
+)
+{
+
+	REG_NOTIFY_CLASS Operation = (REG_NOTIFY_CLASS)(ULONG_PTR)Argument1;
+	ULONG_PTR arg2= (ULONG_PTR)Argument2;
+	switch (Operation)
+	{
+	case RegNtPreCreateKeyEx:
+		DbgPrint("RegNtPreCreateKeyEx");
+		break;
+	case RegNtPreOpenKeyEx:
+		DbgPrint("RegNtPreCreateKeyEx");
+		break;
+	case RegNtKeyHandleClose:
+		DbgPrint("RegNtPreCreateKeyEx");
+		break;
+	}
+	return STATUS_SUCCESS;
+}
+
+
 //---------------------------------------------------------------------------
 //                      ROUTINES
 //---------------------------------------------------------------------------
@@ -246,9 +275,17 @@ Return Value:
 
         status = FltStartFiltering( MiniSpyData.Filter );
 
+
+		//If all went ok, register a process creation notification cb.
 		if (NT_SUCCESS(status))
 		{
 			status = PsSetCreateProcessNotifyRoutine(ProcessCreationCB, FALSE);
+		}
+
+		//If all went ok, register also a register filter.
+		if (NT_SUCCESS(status))
+		{
+			status = CmRegisterCallback(RegistryCallback, NULL, &g_CmCookie);
 		}
 
     } finally {
@@ -374,8 +411,12 @@ Return Value:
 
     PAGED_CODE();
 
-	//Remove from the stuff.
+	//Remove the notification callback.
 	PsSetCreateProcessNotifyRoutine(ProcessCreationCB, TRUE);
+	if (g_CmCookie.QuadPart != 0)
+	{
+		CmUnRegisterCallback(g_CmCookie);
+	}
 
     //
     //  Close the server port. This will stop new connections.
