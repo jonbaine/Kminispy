@@ -17,6 +17,7 @@ Environment:
 --*/
 
 #include "mspyKern.h"
+#include <Ntstrsafe.h>
 #include <stdio.h>
 
 //
@@ -102,13 +103,11 @@ _In_ BOOLEAN Create)
 		recordList->LogRecord.Data.RecordType = 1;
 		recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
 		recordList->LogRecord.Data.ThreadId = (FILE_ID)ParentId;
-		DbgPrint("CREATE %d : %d", ParentId, ProcessId);
 	}
 	else
 	{
 		recordList->LogRecord.Data.RecordType = 2;
 		recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
-		DbgPrint("END %d", ProcessId);
 	}
 	//Set the name to ""
 	UNICODE_STRING emptySTR;
@@ -119,6 +118,43 @@ _In_ BOOLEAN Create)
 }
 
     
+void SendRegistryOperationToUserland (ULONG _opType )
+{
+	PRECORD_LIST recordList = SpyNewRecord();
+	if (!recordList)
+		return;
+
+	//Set the operation type.
+	recordList->LogRecord.Data.RecordType = _opType;
+
+	//Fill the basic stuff (PID-TID).
+	recordList->LogRecord.Data.ProcessId = (FILE_ID)PsGetCurrentProcessId();
+	recordList->LogRecord.Data.ThreadId = (FILE_ID)PsGetCurrentThreadId();
+	//Fill the SystemTypeStuff.
+	KeQuerySystemTime(&recordList->LogRecord.Data.OriginatingTime);
+
+	if (_opType == 3)
+	{
+		recordList->LogRecord.Data.RecordType = 1;
+		recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
+		recordList->LogRecord.Data.ThreadId = (FILE_ID)ParentId;
+	}
+	elseif
+
+	else
+	{
+		recordList->LogRecord.Data.RecordType = 2;
+		recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
+	}
+	//Set the name to ""
+	UNICODE_STRING emptySTR;
+	RtlInitUnicodeString(&emptySTR, L"");
+	SpySetRecordNameAndEcpData(&recordList->LogRecord, &emptySTR, &emptySTR);
+	//Send to the userland!
+	SpyLog(recordList);
+
+}
+
 
 NTSTATUS
 RegistryCallback(
@@ -133,17 +169,150 @@ _In_opt_ PVOID Argument2
 	switch (Operation)
 	{
 	case RegNtPreCreateKeyEx:
-		DbgPrint("RegNtPreCreateKeyEx");
+	{
+								PREG_CREATE_KEY_INFORMATION CallbackData = (PREG_CREATE_KEY_INFORMATION)arg2;
+								if (CallbackData->CompleteName->Length == 0 || *CallbackData->CompleteName->Buffer != OBJ_NAME_PATH_SEPARATOR)
+									DbgPrint("RegNtPreCreateKeyEx %wZ", CallbackData->CompleteName);
+	}
 		break;
 	case RegNtPreOpenKeyEx:
-		DbgPrint("RegNtPreCreateKeyEx");
+	{
+							  PREG_OPEN_KEY_INFORMATION CallbackData = (PREG_OPEN_KEY_INFORMATION)arg2;
+							  if (CallbackData->CompleteName->Length == 0 || *CallbackData->CompleteName->Buffer != OBJ_NAME_PATH_SEPARATOR)
+							  { 
+								  //Get the name of the rootObject where the stuff is done.
+								  ULONG allocatedSTRSize = 1024 * sizeof(UNICODE_STRING);
+								  PUNICODE_STRING root_name = ExAllocatePoolWithTag(NonPagedPool, 1024 * sizeof(UNICODE_STRING), SPY_TAG);
+								  ULONG returnedLength;
+								  //CAll obQueryNAmeString.
+								  NTSTATUS obQueryStatus = ObQueryNameString(CallbackData->RootObject
+									  , (POBJECT_NAME_INFORMATION)root_name
+									  , allocatedSTRSize
+									  , &returnedLength);
+
+								  if (obQueryStatus == STATUS_SUCCESS)
+								  {
+									  if (root_name != NULL)
+									  {
+										  ULONG newSize = CallbackData->CompleteName->Length + root_name->Length + 1/*bonus for the backslash*/;
+										  if (newSize < allocatedSTRSize)
+										  {
+											  //Add the backslash
+											  RtlUnicodeStringCat(root_name, "\\");
+											  //Add at the end of the stuff the complete name.
+											  RtlUnicodeStringCat(root_name, CallbackData->CompleteName);
+										  }
+										  DbgPrint("RegNtPreOpenKeyEx: %wZ", root_name);
+									  }
+									  else
+										  DbgPrint("RegNtPreOpenKeyEx NAME %wZ || ROOT NOT PRESENT!", CallbackData->CompleteName, root_name);
+								  }
+								  else
+								  {
+									  DbgPrint("RegNtPreOpenKeyEx -> Unable to recover the object name.");
+								  }
+								  //Free the AllocatedPool
+								  if (root_name != NULL)
+									  ExFreePoolWithTag(root_name, SPY_TAG);
+							  }
+	}
 		break;
-	case RegNtKeyHandleClose:
-		DbgPrint("RegNtPreCreateKeyEx");
+	case RegNtDeleteKey:
+	{
+						   PREG_DELETE_KEY_INFORMATION CallbackData = (PREG_DELETE_KEY_INFORMATION)arg2;
+						   //In this case use the ObQueryNameString
+						   //TODO -> Determine if Paged should work here.
+						   ULONG allocatedSTRSize = 1024 * sizeof(UNICODE_STRING);
+						   PUNICODE_STRING object_name = ExAllocatePoolWithTag(NonPagedPool, 1024 * sizeof(UNICODE_STRING), SPY_TAG);
+						   ULONG returnedLength;
+						   //CAll obQueryNAmeString.
+						   NTSTATUS obQueryStatus = ObQueryNameString(CallbackData->Object
+							   , (POBJECT_NAME_INFORMATION)object_name
+							   , allocatedSTRSize
+							   , &returnedLength);
+
+						   if (obQueryStatus == STATUS_SUCCESS)
+						   {
+							   DbgPrint("RegNtDeleteKey -> %wZ", object_name);
+						   }
+						   else
+						   {
+							   DbgPrint("RegNtDeleteKey -> Unable to recover the object name.");
+						   }
+						   //Free the AllocatedPool
+						   if (object_name != NULL)
+							   ExFreePoolWithTag(object_name, SPY_TAG);
+	}
+		break;
+	case RegNtDeleteValueKey:
+	{
+								PREG_DELETE_VALUE_KEY_INFORMATION CallbackData = (PREG_DELETE_VALUE_KEY_INFORMATION)arg2;
+								//In this case use the ObQueryNameString
+								//TODO -> Determine if Paged should work here.
+								ULONG allocatedSTRSize = 1024 * sizeof(UNICODE_STRING);
+								PUNICODE_STRING object_name = ExAllocatePoolWithTag(NonPagedPool, 1024 * sizeof(UNICODE_STRING), SPY_TAG);
+								ULONG returnedLength;
+								//CAll obQueryNAmeString.
+								NTSTATUS obQueryStatus = ObQueryNameString(CallbackData->Object
+									, (POBJECT_NAME_INFORMATION)object_name
+									, allocatedSTRSize
+									, &returnedLength);
+
+								if (obQueryStatus == STATUS_SUCCESS)
+								{
+									DbgPrint("RegNtDeleteValueKey -> %wZ", object_name);
+								}
+								else
+								{
+									DbgPrint("RegNtDeleteValueKey -> Unable to recover the object name.");
+								}
+								//Free the AllocatedPool
+								if (object_name != NULL)
+									ExFreePoolWithTag(object_name, SPY_TAG);
+
+	}
+		break;
+	case RegNtSetValueKey:
+	{
+
+							 PREG_SET_VALUE_KEY_INFORMATION CallbackData = (PREG_SET_VALUE_KEY_INFORMATION)arg2;
+							 //In this case use the ObQueryNameString
+							 //TODO -> Determine if Paged should work here.
+							 ULONG allocatedSTRSize = 1024 * sizeof(UNICODE_STRING);
+							 PUNICODE_STRING root_name = ExAllocatePoolWithTag(NonPagedPool, 1024 * sizeof(UNICODE_STRING), SPY_TAG);
+							 ULONG returnedLength;
+							 //CAll obQueryNAmeString.
+							 NTSTATUS obQueryStatus = ObQueryNameString(CallbackData->Object
+								 , (POBJECT_NAME_INFORMATION)root_name
+								 , allocatedSTRSize
+								 , &returnedLength);
+
+							 if (obQueryStatus == STATUS_SUCCESS)
+							 {								 
+								 ULONG newSize = CallbackData->ValueName->Length + root_name->Length + 1;
+								 if (newSize < allocatedSTRSize)
+								 {
+									 RtlUnicodeStringCat(root_name, "\\");
+									 RtlUnicodeStringCat(root_name, CallbackData->ValueName);
+									 //Use CallbackData->Data and DataSize to detect wich is the new data to modify
+									 DbgPrint("RegNtSetValueKey -> %wZ", root_name);
+								 }
+							 }
+							 else
+							 {
+								 DbgPrint("RegNtSetValueKey -> Unable to recover the object name.");
+							 }
+							 //Free the AllocatedPool
+							 if (root_name != NULL)
+								 ExFreePoolWithTag(root_name, SPY_TAG);
+
+
+	}
 		break;
 	}
 	return STATUS_SUCCESS;
 }
+
 
 
 //---------------------------------------------------------------------------
@@ -1446,7 +1615,6 @@ Return Value:
     NTSTATUS Status;
 
     Status = ExceptionPointer->ExceptionRecord->ExceptionCode;
-
     //
     //  Certain exceptions shouldn't be dismissed within the namechanger filter
     //  unless we're touching user memory.

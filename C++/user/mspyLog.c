@@ -1077,7 +1077,7 @@ None.
 	CHAR time[TIME_BUFFER_LENGTH];
 	static BOOLEAN didScreenHeader = FALSE;
 
-
+	//RecordType 0 -> File Stuff.
 	if (RecordData->RecordType == 0)
 	{
 
@@ -1174,6 +1174,8 @@ None.
 		printf("%S", Name);
 		printf("\n");
 	}
+
+	//Record type 1 -> STARTPROC.
 	else if (RecordData->RecordType == 1)
 	{
 		printf("STARTPROC ");
@@ -1205,6 +1207,7 @@ None.
 
 
 	}
+	//RecordTypoe 2 ENDPROC.
 	else if (RecordData->RecordType == 2)
 	{
 		printf("ENDPROC ");
@@ -1224,5 +1227,7 @@ None.
 			printf(" %d [NO_EXE]\t", RecordData->ProcessId);
 
 	}
+
+
 
 }

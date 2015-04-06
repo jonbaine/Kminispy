@@ -30,7 +30,7 @@ Environment:
 //  Memory allocation tag
 //
 
-#define SPY_TAG 'ypSM'
+#define SPY_TAG 'KSPY'
 
 //
 //  Win8 define for support of NPFS/MSFS
