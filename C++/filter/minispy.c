@@ -120,38 +120,38 @@ _In_ BOOLEAN Create)
     
 void SendRegistryOperationToUserland (ULONG _opType )
 {
-	PRECORD_LIST recordList = SpyNewRecord();
-	if (!recordList)
-		return;
+	//PRECORD_LIST recordList = SpyNewRecord();
+	//if (!recordList)
+	//	return;
 
-	//Set the operation type.
-	recordList->LogRecord.Data.RecordType = _opType;
+	////Set the operation type.
+	//recordList->LogRecord.Data.RecordType = _opType;
 
-	//Fill the basic stuff (PID-TID).
-	recordList->LogRecord.Data.ProcessId = (FILE_ID)PsGetCurrentProcessId();
-	recordList->LogRecord.Data.ThreadId = (FILE_ID)PsGetCurrentThreadId();
-	//Fill the SystemTypeStuff.
-	KeQuerySystemTime(&recordList->LogRecord.Data.OriginatingTime);
+	////Fill the basic stuff (PID-TID).
+	//recordList->LogRecord.Data.ProcessId = (FILE_ID)PsGetCurrentProcessId();
+	//recordList->LogRecord.Data.ThreadId = (FILE_ID)PsGetCurrentThreadId();
+	////Fill the SystemTypeStuff.
+	//KeQuerySystemTime(&recordList->LogRecord.Data.OriginatingTime);
 
-	if (_opType == 3)
-	{
-		recordList->LogRecord.Data.RecordType = 1;
-		recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
-		recordList->LogRecord.Data.ThreadId = (FILE_ID)ParentId;
-	}
-	elseif
+	//if (_opType == 3)
+	//{
+	//	recordList->LogRecord.Data.RecordType = 1;
+	//	recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
+	//	recordList->LogRecord.Data.ThreadId = (FILE_ID)ParentId;
+	//}
+	//elseif
 
-	else
-	{
-		recordList->LogRecord.Data.RecordType = 2;
-		recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
-	}
-	//Set the name to ""
-	UNICODE_STRING emptySTR;
-	RtlInitUnicodeString(&emptySTR, L"");
-	SpySetRecordNameAndEcpData(&recordList->LogRecord, &emptySTR, &emptySTR);
-	//Send to the userland!
-	SpyLog(recordList);
+	//else
+	//{
+	//	recordList->LogRecord.Data.RecordType = 2;
+	//	recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
+	//}
+	////Set the name to ""
+	//UNICODE_STRING emptySTR;
+	//RtlInitUnicodeString(&emptySTR, L"");
+	//SpySetRecordNameAndEcpData(&recordList->LogRecord, &emptySTR, &emptySTR);
+	////Send to the userland!
+	//SpyLog(recordList);
 
 }
 
