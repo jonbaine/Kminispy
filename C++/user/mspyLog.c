@@ -27,7 +27,7 @@ _Analysis_mode_(_Analysis_code_type_user_code_)
 #include "mspyLog.h"
 #include "Psapi.h"
 
-#define TIME_BUFFER_LENGTH 20
+#define TIME_BUFFER_LENGTH  40
 #define TIME_ERROR         "time error"
 
 #define POLL_INTERVAL   200     // 200 milliseconds
@@ -888,7 +888,10 @@ Return Value:
 
     returnLength = sprintf_s( Buffer,
                             BufferLength,
-                            "%02d:%02d:%02d:%03d",
+                            "%04d/%02d/02d %02d:%02d:%02d:%03d",
+							SystemTime->wYear,
+							SystemTime->wMonth,
+							SystemTime->wDay,
                             SystemTime->wHour,
                             SystemTime->wMinute,
                             SystemTime->wSecond,
@@ -1104,8 +1107,8 @@ None.
 
 		if (!didScreenHeader) {
 
-			printf("Opr  PreOp Time  Process.Thrd   Major/Minor Operation              Name\n");
-			printf("--- ------------ ------------ ---------------------------------- -------------------------------------------------------------------------------------------------------- \n");
+			printf("Opr  PreOp Time  Process.Thrd   Major/Minor Operation           NT_STATUS   Name\n");
+			printf("--- ------------ ------------ -----------------------------------------  -------------------------------------------------------------------------------------------------------- \n");
 			didScreenHeader = TRUE;
 		}
 
@@ -1142,12 +1145,9 @@ None.
 			&systemTime);
 
 		if (FormatSystemTime(&systemTime, time, TIME_BUFFER_LENGTH)) {
-
 			printf("%-12s ", time);
-
 		}
 		else {
-
 			printf("%-12s ", TIME_ERROR);
 		}
 
@@ -1157,6 +1157,9 @@ None.
 			RecordData->CallbackMinorId,
 			NULL,
 			TRUE);
+
+		//Print the result of the operation. (NT_STATUS)
+		printf("%8d  ", RecordData->Status);
 
 		char pName[512];
 		HANDLE procHandle;
@@ -1180,6 +1183,21 @@ None.
 	{
 		printf("STARTPROC ");
 		//process creation:
+
+		//TIME STUFF
+		FileTimeToLocalFileTime((FILETIME *)&(RecordData->OriginatingTime),
+			&localTime);
+		FileTimeToSystemTime(&localTime,
+			&systemTime);
+
+		if (FormatSystemTime(&systemTime, time, TIME_BUFFER_LENGTH)) {
+			printf("%-12s ", time);
+		}
+		else {
+			printf("%-12s ", TIME_ERROR);
+		}
+
+		//NAME!
 		char pName[512];
 		HANDLE procHandle;
 		if (procHandle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)RecordData->ProcessId))
@@ -1211,8 +1229,21 @@ None.
 	else if (RecordData->RecordType == 2)
 	{
 		printf("ENDPROC ");
+
+		//TIME STUFF
+		FileTimeToLocalFileTime((FILETIME *)&(RecordData->OriginatingTime),
+			&localTime);
+		FileTimeToSystemTime(&localTime,
+			&systemTime);
+
+		if (FormatSystemTime(&systemTime, time, TIME_BUFFER_LENGTH)) {
+			printf("%-12s ", time);
+		}
+		else {
+			printf("%-12s ", TIME_ERROR);
+		}
+
 		//Process end:
-		//process creation:
 		char pName[512];
 		HANDLE procHandle;
 		if (procHandle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)RecordData->ProcessId))
@@ -1227,7 +1258,6 @@ None.
 			printf(" %d [NO_EXE]\t", RecordData->ProcessId);
 
 	}
-
 
 
 }

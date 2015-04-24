@@ -109,6 +109,9 @@ _In_ BOOLEAN Create)
 		recordList->LogRecord.Data.RecordType = 2;
 		recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
 	}
+	//Set the time for the originating and completion itme.
+	KeQuerySystemTime(&recordList->LogRecord.Data.OriginatingTime);
+	recordList->LogRecord.Data.CompletionTime = recordList->LogRecord.Data.OriginatingTime;
 	//Set the name to ""
 	UNICODE_STRING emptySTR;
 	RtlInitUnicodeString(&emptySTR, L"");
@@ -118,40 +121,40 @@ _In_ BOOLEAN Create)
 }
 
     
-void SendRegistryOperationToUserland (ULONG _opType )
+void SendRegistryOperationToUserland (ULONG _opType, PUNICODE_STRING _pTarget )
 {
-	//PRECORD_LIST recordList = SpyNewRecord();
-	//if (!recordList)
-	//	return;
+	PRECORD_LIST recordList = SpyNewRecord();
+	if (!recordList)
+		return;
 
-	////Set the operation type.
-	//recordList->LogRecord.Data.RecordType = _opType;
+	//Set the operation type.
+	recordList->LogRecord.Data.RecordType = _opType;
+	//Fill the basic stuff (PID-TID).
+	recordList->LogRecord.Data.ProcessId = (FILE_ID)PsGetCurrentProcessId();
+	recordList->LogRecord.Data.ThreadId = (FILE_ID)PsGetCurrentThreadId();
+	//Fill the SystemTypeStuff.
+	KeQuerySystemTime(&recordList->LogRecord.Data.OriginatingTime);
 
-	////Fill the basic stuff (PID-TID).
-	//recordList->LogRecord.Data.ProcessId = (FILE_ID)PsGetCurrentProcessId();
-	//recordList->LogRecord.Data.ThreadId = (FILE_ID)PsGetCurrentThreadId();
-	////Fill the SystemTypeStuff.
-	//KeQuerySystemTime(&recordList->LogRecord.Data.OriginatingTime);
+	if (_opType == 3)
+	{
+		recordList->LogRecord.Data.RecordType = 1;
+		recordList->LogRecord.Data.ProcessId = PsGetCurrentProcessId();
+	}
 
-	//if (_opType == 3)
-	//{
-	//	recordList->LogRecord.Data.RecordType = 1;
-	//	recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
-	//	recordList->LogRecord.Data.ThreadId = (FILE_ID)ParentId;
-	//}
-	//elseif
 
-	//else
-	//{
-	//	recordList->LogRecord.Data.RecordType = 2;
-	//	recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
-	//}
+	else if (_opType == 4)
+	{
+		recordList->LogRecord.Data.RecordType = 2;
+		recordList->LogRecord.Data.ProcessId = PsGetCurrentProcessId();
+	}
+
+
 	////Set the name to ""
-	//UNICODE_STRING emptySTR;
-	//RtlInitUnicodeString(&emptySTR, L"");
-	//SpySetRecordNameAndEcpData(&recordList->LogRecord, &emptySTR, &emptySTR);
+	UNICODE_STRING emptySTR;
+	RtlInitUnicodeString(&emptySTR, L"");
+	SpySetRecordNameAndEcpData(&recordList->LogRecord, _pTarget, &emptySTR);
 	////Send to the userland!
-	//SpyLog(recordList);
+	SpyLog(recordList);
 
 }
 

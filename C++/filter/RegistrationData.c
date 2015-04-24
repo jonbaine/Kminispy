@@ -37,22 +37,22 @@ CONST FLT_OPERATION_REGISTRATION Callbacks[] = {
     { IRP_MJ_CREATE,
       0,
       SpyPreOperationCallback,
-      SpyPostOperationCallback },
+      SpyPostOperationCallback},
 
     { IRP_MJ_CLOSE,
       0,
       SpyPreOperationCallback,
-      SpyPostOperationCallback },
+      SpyPostOperationCallback},
 
     { IRP_MJ_READ,
       0,
       SpyPreOperationCallback,
-      SpyPostOperationCallback },
+      SpyPostOperationCallback},
 
     { IRP_MJ_WRITE,
       0,
       SpyPreOperationCallback,
-      SpyPostOperationCallback },
+      SpyPostOperationCallback},
 
 
     { IRP_MJ_SET_INFORMATION,
