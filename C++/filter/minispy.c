@@ -100,13 +100,13 @@ _In_ BOOLEAN Create)
 
 	if (Create)
 	{
-		recordList->LogRecord.Data.RecordType = 1;
+		recordList->LogRecord.Data.RecordType = CREATE_OP;
 		recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
 		recordList->LogRecord.Data.ThreadId = (FILE_ID)ParentId;
 	}
 	else
 	{
-		recordList->LogRecord.Data.RecordType = 2;
+		recordList->LogRecord.Data.RecordType = EXIT_OP;
 		recordList->LogRecord.Data.ProcessId = (FILE_ID)ProcessId;
 	}
 	//Set the time for the originating and completion itme.
@@ -134,25 +134,12 @@ void SendRegistryOperationToUserland (ULONG _opType, PUNICODE_STRING _pTarget )
 	recordList->LogRecord.Data.ThreadId = (FILE_ID)PsGetCurrentThreadId();
 	//Fill the SystemTypeStuff.
 	KeQuerySystemTime(&recordList->LogRecord.Data.OriginatingTime);
-
-	if (_opType == 3)
-	{
-		recordList->LogRecord.Data.RecordType = 1;
-		recordList->LogRecord.Data.ProcessId = PsGetCurrentProcessId();
-	}
-
-
-	else if (_opType == 4)
-	{
-		recordList->LogRecord.Data.RecordType = 2;
-		recordList->LogRecord.Data.ProcessId = PsGetCurrentProcessId();
-	}
-
-
+	KeQuerySystemTime(&recordList->LogRecord.Data.CompletionTime);
 	////Set the name to ""
 	UNICODE_STRING emptySTR;
 	RtlInitUnicodeString(&emptySTR, L"");
-	SpySetRecordNameAndEcpData(&recordList->LogRecord, _pTarget, &emptySTR);
+	DbgPrint("SendRegistryOperationToUserland : %wZ", _pTarget);
+	SpySetRecordNameAndEcpData(&recordList->LogRecord, _pTarget, NULL);
 	////Send to the userland!
 	SpyLog(recordList);
 
@@ -175,10 +162,14 @@ _In_opt_ PVOID Argument2
 	{
 								PREG_CREATE_KEY_INFORMATION CallbackData = (PREG_CREATE_KEY_INFORMATION)arg2;
 								if (CallbackData->CompleteName->Length == 0 || *CallbackData->CompleteName->Buffer != OBJ_NAME_PATH_SEPARATOR)
+								{
+									SendRegistryOperationToUserland(REG_PRE_CREATE, CallbackData->CompleteName);
 									DbgPrint("RegNtPreCreateKeyEx %wZ", CallbackData->CompleteName);
+								}
 	}
 		break;
 	case RegNtPreOpenKeyEx:
+		break;
 	{
 							  PREG_OPEN_KEY_INFORMATION CallbackData = (PREG_OPEN_KEY_INFORMATION)arg2;
 							  if (CallbackData->CompleteName->Length == 0 || *CallbackData->CompleteName->Buffer != OBJ_NAME_PATH_SEPARATOR)
@@ -205,6 +196,7 @@ _In_opt_ PVOID Argument2
 											  //Add at the end of the stuff the complete name.
 											  RtlUnicodeStringCat(root_name, CallbackData->CompleteName);
 										  }
+										  SendRegistryOperationToUserland(REG_PRE_OPEN, root_name);
 										  DbgPrint("RegNtPreOpenKeyEx: %wZ", root_name);
 									  }
 									  else
@@ -237,6 +229,7 @@ _In_opt_ PVOID Argument2
 						   if (obQueryStatus == STATUS_SUCCESS)
 						   {
 							   DbgPrint("RegNtDeleteKey -> %wZ", object_name);
+							   SendRegistryOperationToUserland(REG_DELETE_KEY, object_name);
 						   }
 						   else
 						   {
@@ -264,6 +257,7 @@ _In_opt_ PVOID Argument2
 								if (obQueryStatus == STATUS_SUCCESS)
 								{
 									DbgPrint("RegNtDeleteValueKey -> %wZ", object_name);
+									SendRegistryOperationToUserland(REG_DELETE_VALUE, object_name);
 								}
 								else
 								{
@@ -298,6 +292,7 @@ _In_opt_ PVOID Argument2
 									 RtlUnicodeStringCat(root_name, "\\");
 									 RtlUnicodeStringCat(root_name, CallbackData->ValueName);
 									 //Use CallbackData->Data and DataSize to detect wich is the new data to modify
+									 SendRegistryOperationToUserland(REG_SET_VALUE, root_name);
 									 DbgPrint("RegNtSetValueKey -> %wZ", root_name);
 								 }
 							 }

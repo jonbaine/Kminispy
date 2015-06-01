@@ -32,6 +32,17 @@ Environment:
 
 #define SPY_TAG 'KSPY'
 
+
+#define FILTER_OP 0
+#define CREATE_OP 1
+#define EXIT_OP 2
+#define REG_PRE_CREATE 3
+#define REG_PRE_OPEN 4
+#define REG_DELETE_KEY 5
+#define REG_DELETE_VALUE 6
+#define REG_SET_VALUE 7
+
+
 //
 //  Win8 define for support of NPFS/MSFS
 //  Win7 define for support of new ECPs.

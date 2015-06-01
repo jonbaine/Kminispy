@@ -228,6 +228,7 @@ Return Value:
     context.CleaningUp = FALSE;
     context.LogToFile = FALSE;
     context.LogToScreen = FALSE;        //don't start logging yet
+	context.ReadyToPrint = FALSE;
     context.NextLogToScreen = TRUE;
     context.OutputFile = NULL;
 
@@ -311,6 +312,7 @@ Return Value:
 
             context.NextLogToScreen = context.LogToScreen;
             context.LogToScreen = FALSE;
+			context.ReadyToPrint = FALSE;
 
             while (returnValue != EXIT_INTERPRETER) {
 
@@ -387,6 +389,7 @@ Return Value:
             if (context.LogToScreen) {
 
                 printf( "Should be logging to screen...\n" );
+				context.ReadyToPrint = TRUE;
             }
         }
     }

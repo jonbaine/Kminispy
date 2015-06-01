@@ -27,7 +27,7 @@ _Analysis_mode_(_Analysis_code_type_user_code_)
 #include "mspyLog.h"
 #include "Psapi.h"
 
-#define TIME_BUFFER_LENGTH  40
+#define TIME_BUFFER_LENGTH  80
 #define TIME_ERROR         "time error"
 
 #define POLL_INTERVAL   200     // 200 milliseconds
@@ -235,8 +235,8 @@ Return Value:
                 }
             }
 
-            if (context->LogToScreen) {
-
+            if (context->LogToScreen && context->ReadyToPrint) {
+				
                 ScreenDump( 
                             pLogRecord->Name,
                             pRecordData );
@@ -1081,7 +1081,7 @@ None.
 	static BOOLEAN didScreenHeader = FALSE;
 
 	//RecordType 0 -> File Stuff.
-	if (RecordData->RecordType == 0)
+	if (RecordData->RecordType == FILTER_OP)
 	{
 
 
@@ -1179,7 +1179,7 @@ None.
 	}
 
 	//Record type 1 -> STARTPROC.
-	else if (RecordData->RecordType == 1)
+	else if (RecordData->RecordType == CREATE_OP)
 	{
 		printf("STARTPROC ");
 		//process creation:
@@ -1223,10 +1223,10 @@ None.
 		else
 			printf(" %d [NO_EXE]\t", RecordData->ThreadId);
 
-
+		printf("\n");
 	}
 	//RecordTypoe 2 ENDPROC.
-	else if (RecordData->RecordType == 2)
+	else if (RecordData->RecordType == EXIT_OP)
 	{
 		printf("ENDPROC ");
 
@@ -1256,7 +1256,69 @@ None.
 		}
 		else
 			printf(" %d [NO_EXE]\t", RecordData->ProcessId);
+		printf("\n");
+	}
+	/*
+	#define REG_PRE_CREATE 3
+	#define REG_PRE_OPEN 4
+	#define REG_DELETE_KEY 5
+	#define REG_DELETE_VALUE 6
+	#define RET_SET_VALUE 7
+	*/
+	else if (RecordData->RecordType >= REG_PRE_CREATE 
+		&&
+		RecordData->RecordType <= RET_SET_VALUE)
+	{
+		//Registry operation.
+		//Print the operation type.
+		switch (RecordData->RecordType)
+		{
+		case REG_PRE_OPEN:
+			printf("REG_PRE_OPEN ");
+			break;
+		case REG_PRE_CREATE:
+			printf("REG_CREATE ");
+			break;
+		case REG_DELETE_KEY:
+			printf("REG_DELETE_KEY ");
+			break;
+		case REG_DELETE_VALUE:
+			printf("REG_DELETE_VALUE");
+			break;
+		case RET_SET_VALUE:
+			printf("REG_SET_VALUE");
+			break;
+		}
+		//TIME STUFF
+		FileTimeToLocalFileTime((FILETIME *)&(RecordData->OriginatingTime),
+			&localTime);
+		FileTimeToSystemTime(&localTime,
+			&systemTime);
 
+		if (FormatSystemTime(&systemTime, time, TIME_BUFFER_LENGTH)) {
+			printf("%-12s ", time);
+		}
+		else {
+			printf("%-12s ", TIME_ERROR);
+		}
+
+		//Process name
+		char pName[1024];
+		HANDLE procHandle;
+		if (procHandle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, (DWORD)RecordData->ProcessId))
+		{
+			if (GetProcessImageFileNameA(procHandle, (LPSTR)pName, 1024) > 0)
+				printf("%d \"%s\"\t", RecordData->ProcessId, pName);
+			else
+				printf(" %d [NO_EXE]\t", RecordData->ProcessId);
+			CloseHandle(procHandle);
+		}
+		else
+			printf(" %d [NO_EXE]\t", RecordData->ProcessId);
+
+		//Print the name of the involved registry.:
+		printf("%S",Name);
+		printf("\n");
 	}
 
 

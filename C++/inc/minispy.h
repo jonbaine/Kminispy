@@ -98,6 +98,17 @@ typedef _Return_type_success_(return >= 0) LONG NTSTATUS;
 //  The fixed data received for RECORD_TYPE_NORMAL
 //
 
+
+#define FLT_TYPE 0
+#define STARTPROC_TYPE 1
+#define ENDPROC_TYPE 2
+#define RegNtPreCreateKeyEx_TYPE 3
+#define RegNtPreOpenKeyEx_TYPE 4
+#define RegNtDeleteKey_TYPE 5
+#define RegNtDeleteValueKey_TYPE 6
+#define RegNtSetValueKey_TYPE 7
+
+
 typedef struct _RECORD_DATA {
 
 	ULONG RecordType;

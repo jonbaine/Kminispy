@@ -33,6 +33,7 @@ typedef struct _LOG_CONTEXT {
 
     HANDLE Port;
     BOOLEAN LogToScreen;
+	BOOLEAN ReadyToPrint;
     BOOLEAN LogToFile;
     FILE   *OutputFile;
 
@@ -229,6 +230,17 @@ ScreenDump(
 #define TRANSACTION_NOTIFY_PROPAGATE_PUSH_STRING        "TRANSACTION_NOTIFY_PROPAGATE_PUSH"
 #define TRANSACTION_NOTIFY_MARSHAL_STRING               "TRANSACTION_NOTIFY_MARSHAL"
 #define TRANSACTION_NOTIFY_ENLIST_MASK_STRING           "TRANSACTION_NOTIFY_ENLIST_MASK"
+
+
+//Define types.
+#define FILTER_OP 0
+#define CREATE_OP 1
+#define EXIT_OP 2
+#define REG_PRE_CREATE 3
+#define REG_PRE_OPEN 4
+#define REG_DELETE_KEY 5
+#define REG_DELETE_VALUE 6
+#define RET_SET_VALUE 7
 
 
 //
